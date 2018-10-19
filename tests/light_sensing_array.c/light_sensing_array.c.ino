@@ -40,7 +40,7 @@ void println(const char * str) {
  */
 
 // Frame rate (frames per second)
-const uint32_t FPS = 100;
+const uint32_t FPS = 40;
 
 // Timeout until closure signal sent
 const uint32_t MAX_TIMEOUT_MS = 15 * 1000000; // 15 seconds
@@ -49,8 +49,8 @@ const uint32_t TIMEOUT_INC_MS = 1000000 / FPS;
 int32_t timeout_ms = MAX_TIMEOUT_MS;
 
 // Sensor input pins
-const uint16_t N_PIN_INPUT_PHOTO = 6;
-const uint16_t PIN_INPUT_PHOTO[N_PIN_INPUT_PHOTO] = { 1, 2, 3, 4, 5, 6 };
+const uint16_t N_PIN_INPUT_PHOTO = 1;
+const uint16_t PIN_INPUT_PHOTO[N_PIN_INPUT_PHOTO] = { 1 };
 
 // Analog input difference threshold needed to trigger timeout reset
 const uint16_t SENSITIVITY = 50;
@@ -58,25 +58,27 @@ const uint16_t SENSITIVITY = 50;
 // Phototransistor voltage state buffer
 //
 // Assuming that the buffer is 4 samples large....
-//    [ * * * * - - - - ]   (* = stored sample)
-//      0 1 2 3 4 5 6 7     (- = empty sample)
-//                          (X = selected stored sample)
-// 4 looks back at 1...     (O = new sample)
-//    [ X * * * O - - - ]
+//     --back---   --head---
+//    [ * * * * ] [ - - - - ]   (* = stored sample)
+//      0 1 2 3     4 5 6 7     (- = empty sample)
+//                              (X = selected stored sample)
+// 4 looks back at 1...         (O = new sample)
+//    [ X * * * ] [ O - - - ]
 //
 // 5 looks back at 2...
-//    [ * X * * * O - - ]
+//    [ * X * * ] [ * O - - ]
 //
 // and so on...
 //
-//    [ * * * * * * * * ]
-//              =======---------> These four at pos. 4-7 go to pos. 0-3
+//    [ * * * * ] [ * * * * ]
+//                  =======---------> These four at pos. 4-7 go to pos. 0-3
 //
 // and repeat
 //
 // NOTE: buffer needs to be twice the size as the number of samples
 const uint16_t N_BUFFER_SAMPLES = 10;
-uint16_t buffer[N_BUFFER_SAMPLES * 2][N_PIN_INPUT_PHOTO];
+int16_t buffer_head[N_BUFFER_SAMPLES][N_PIN_INPUT_PHOTO];
+int16_t buffer_back[N_BUFFER_SAMPLES][N_PIN_INPUT_PHOTO];
 
 
 
@@ -84,7 +86,7 @@ uint16_t buffer[N_BUFFER_SAMPLES * 2][N_PIN_INPUT_PHOTO];
  * Close sash
  */
 void close_sash() {
-    
+    println("Close Sash!");
 }
 
 
@@ -100,9 +102,9 @@ void setup() {
     for (uint16_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
         
         // Read the pin value and copy to first half of buffer
-        uint16_t state = analogRead(PIN_INPUT_PHOTO[pin_i]);
+        int16_t state = analogRead(PIN_INPUT_PHOTO[pin_i]);
         for (uint16_t buf_i = 0; buf_i < N_BUFFER_SAMPLES; buf_i++) {
-            buffer[buf_i][pin_i] = state;
+            buffer_back[buf_i][pin_i] = state;
         }
     }
 }
@@ -120,12 +122,12 @@ void loop() {
         for (uint16_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
             
             // Read value and place into buffer
-            buffer[buf_i + N_BUFFER_SAMPLES][pin_i] = (uint16_t)analogRead(
-                PIN_INPUT_PHOTO[pin_i]);
+            int16_t value = analogRead(PIN_INPUT_PHOTO[pin_i]);
+            
+            buffer_head[buf_i][pin_i] = value;
             
             // Get difference between two samples
-            int16_t difference =
-                buffer[buf_i + N_BUFFER_SAMPLES][pin_i] - buffer[buf_i][pin_i];
+            int16_t difference = buffer_head[buf_i][pin_i] - buffer_back[buf_i][pin_i];
             
             // If the difference exceeds a threshold, then set a reset
             if (abs(difference) > SENSITIVITY) {
@@ -148,5 +150,5 @@ void loop() {
     // Swap the second half of the buffer with the first half
     const uint16_t BLOCK_SIZE =
         N_BUFFER_SAMPLES * N_PIN_INPUT_PHOTO * sizeof(uint16_t);
-    memcpy(buffer, buffer + BLOCK_SIZE, BLOCK_SIZE);
+    memcpy(buffer_back, buffer_head, BLOCK_SIZE);
 }
