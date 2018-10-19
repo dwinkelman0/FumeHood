@@ -40,11 +40,11 @@ void println(const char * str) {
  */
 
 // Frame rate (frames per second)
-const uint32_t FPS = 40;
+const int32_t FPS = 40;
 
 // Timeout until closure signal sent
-const uint32_t MAX_TIMEOUT_MS = 15 * 1000000; // 15 seconds
-const uint32_t TIMEOUT_INC_MS = 1000000 / FPS;
+const int32_t MAX_TIMEOUT_MS = 15 * 1000000; // 15 seconds
+const int32_t TIMEOUT_INC_MS = 1000000 / FPS;
 
 int32_t timeout_ms = MAX_TIMEOUT_MS;
 
@@ -80,6 +80,13 @@ const uint16_t N_BUFFER_SAMPLES = 10;
 int16_t buffer_head[N_BUFFER_SAMPLES][N_PIN_INPUT_PHOTO];
 int16_t buffer_back[N_BUFFER_SAMPLES][N_PIN_INPUT_PHOTO];
 
+// Indicator LED timeouts
+const uint8_t PIN_OUTPUT_GREEN = 0;
+const uint8_t PIN_OUTPUT_RED = 1;
+const int32_t MAX_TIMEOUT_GREEN_MS = 1000000;
+const int32_t MAX_TIMEOUT_RED_MS = 500000;
+int32_t timeout_green_ms = 0;
+int32_t timeout_red_ms = 0;
 
 
 /******************************************************************************
@@ -87,6 +94,12 @@ int16_t buffer_back[N_BUFFER_SAMPLES][N_PIN_INPUT_PHOTO];
  */
 void close_sash() {
     println("Close Sash!");
+
+    // Signal to green LED
+    // TODO: Implement interrupt system if the sensors detect motion while closing
+    digitalWrite(PIN_OUTPUT_GREEN, HIGH);
+    delay(MAX_TIMEOUT_GREEN_MS);
+    digitalWrite(PIN_OUTPUT_RED, LOW);
 }
 
 
@@ -97,6 +110,10 @@ void close_sash() {
 void setup() {
     // Set up debug serial connection
     serial_setup();
+
+    // Set up LED indicator pins
+    pinMode(PIN_OUTPUT_GREEN, OUTPUT);
+    pinMode(PIN_OUTPUT_RED, OUTPUT);
 
     // Populate buffer with initial analog pin values
     for (uint16_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
@@ -132,11 +149,20 @@ void loop() {
             // If the difference exceeds a threshold, then set a reset
             if (abs(difference) > SENSITIVITY) {
                 timeout_ms = MAX_TIMEOUT_MS;
+
+                // Signal to red LED
+                digitalWrite(1, HIGH);
+                timeout_red_ms = MAX_TIMEOUT_RED_MS;
             }
         }
         
         // Wait until next cycle
         delayMicroseconds(TIMEOUT_INC_MS);
+
+        timeout_red_ms -= TIMEOUT_INC_MS;
+        if (timeout_red_ms < 0) {
+            digitalWrite(PIN_OUTPUT_RED, LOW);
+        }
         
         // Decrement timeout
         timeout_ms -= TIMEOUT_INC_MS;
