@@ -75,7 +75,7 @@ const uint16_t SENSITIVITY = 50;
 // and repeat
 //
 // NOTE: buffer needs to be twice the size as the number of samples
-uint16_t N_BUFFER_SAMPLES = 10;
+const uint16_t N_BUFFER_SAMPLES = 10;
 uint16_t buffer[N_BUFFER_SAMPLES * 2][N_PIN_INPUT_PHOTO];
 
 
@@ -97,11 +97,11 @@ void setup() {
     serial_setup();
 
     // Populate buffer with initial analog pin values
-    for (uint8_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
+    for (uint16_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
         
         // Read the pin value and copy to first half of buffer
         uint16_t state = analogRead(PIN_INPUT_PHOTO[pin_i]);
-        for (uint8_t buf_i = 0; buf_i < N_BUFFER_SAMPLES; buf_i++) {
+        for (uint16_t buf_i = 0; buf_i < N_BUFFER_SAMPLES; buf_i++) {
             buffer[buf_i][pin_i] = state;
         }
     }
@@ -114,18 +114,18 @@ void setup() {
  */
 void loop() {
     // For each element in the buffer
-    for (uint8_t buf_i = 0; buf_i < N_BUFFER_SAMPLES; buf_i++) {
+    for (uint16_t buf_i = 0; buf_i < N_BUFFER_SAMPLES; buf_i++) {
         
         // For each pin
-        for (uint8_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
+        for (uint16_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
             
             // Read value and place into buffer
-            buffer[buf_i + N_BUFFER_SAMPLES] = analogRead(
+            buffer[buf_i + N_BUFFER_SAMPLES][pin_i] = (uint16_t)analogRead(
                 PIN_INPUT_PHOTO[pin_i]);
             
             // Get difference between two samples
             int16_t difference =
-                buffer[buf_i + N_BUFFER_SAMPLES] - buffer[buf_i];
+                buffer[buf_i + N_BUFFER_SAMPLES][pin_i] - buffer[buf_i][pin_i];
             
             // If the difference exceeds a threshold, then set a reset
             if (abs(difference) > SENSITIVITY) {
