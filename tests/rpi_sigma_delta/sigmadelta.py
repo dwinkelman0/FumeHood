@@ -2,6 +2,7 @@ from picamera import PiCamera
 from time import sleep
 from io import BytesIO
 from PIL import Image
+from numpy import asarray
 
 # Initialize and warm up the camera
 stream = BytesIO()
@@ -14,6 +15,8 @@ camera.capture(stream, format='jpeg')
 streak.seek(0)
 image = Image.open(stream)
 
+# Convert frame to a Numpy array
+array = asarray(image)
+
 # Clean up
 camera.stop_preview()
-
