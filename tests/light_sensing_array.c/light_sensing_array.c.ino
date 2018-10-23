@@ -40,13 +40,13 @@ void println(const char * str) {
  */
 
 // Frame rate (frames per second)
-const int32_t FPS = 40;
+//const int32_t FPS = 40;
 
 // Timeout until closure signal sent
-const int32_t MAX_TIMEOUT_MS = 15 * 1000000; // 15 seconds
-const int32_t TIMEOUT_INC_MS = 1000000 / FPS;
+//const int32_t MAX_TIMEOUT_MS = 15 * 1000000; // 15 seconds
+//const int32_t TIMEOUT_INC_MS = 1000000 / FPS;
 
-int32_t timeout_ms = MAX_TIMEOUT_MS;
+int32_t timeout_ms = 15000;
 
 // Sensor input pins
 const uint16_t N_PIN_INPUT_PHOTO = 1;
@@ -81,10 +81,8 @@ int16_t buffer_head[N_BUFFER_SAMPLES][N_PIN_INPUT_PHOTO];
 int16_t buffer_back[N_BUFFER_SAMPLES][N_PIN_INPUT_PHOTO];
 
 // Indicator LED timeouts
-const uint8_t PIN_OUTPUT_GREEN = 0;
-const uint8_t PIN_OUTPUT_RED = 1;
-const int32_t MAX_TIMEOUT_GREEN_MS = 1000000;
-const int32_t MAX_TIMEOUT_RED_MS = 500000;
+const uint8_t PIN_OUTPUT_GREEN = 2;
+const uint8_t PIN_OUTPUT_RED = 3;
 int32_t timeout_green_ms = 0;
 int32_t timeout_red_ms = 0;
 
@@ -98,8 +96,8 @@ void close_sash() {
     // Signal to green LED
     // TODO: Implement interrupt system if the sensors detect motion while closing
     digitalWrite(PIN_OUTPUT_GREEN, HIGH);
-    delay(MAX_TIMEOUT_GREEN_MS);
-    digitalWrite(PIN_OUTPUT_RED, LOW);
+    delay(1000);
+    digitalWrite(PIN_OUTPUT_GREEN, LOW);
 }
 
 
@@ -114,6 +112,8 @@ void setup() {
     // Set up LED indicator pins
     pinMode(PIN_OUTPUT_GREEN, OUTPUT);
     pinMode(PIN_OUTPUT_RED, OUTPUT);
+    digitalWrite(PIN_OUTPUT_GREEN, LOW);
+    digitalWrite(PIN_OUTPUT_RED, LOW);
 
     // Populate buffer with initial analog pin values
     for (uint16_t pin_i = 0; pin_i < N_PIN_INPUT_PHOTO; pin_i++) {
@@ -131,7 +131,7 @@ void setup() {
 /******************************************************************************
  * Program Loop
  */
-void loop() {
+void loop() {  
     // For each element in the buffer
     for (uint16_t buf_i = 0; buf_i < N_BUFFER_SAMPLES; buf_i++) {
         
@@ -145,27 +145,33 @@ void loop() {
             
             // Get difference between two samples
             int16_t difference = buffer_head[buf_i][pin_i] - buffer_back[buf_i][pin_i];
+
+            char buf[6];
+            sprintf(buf, "%i", difference);
+            println(buf);
             
             // If the difference exceeds a threshold, then set a reset
             if (abs(difference) > SENSITIVITY) {
-                timeout_ms = MAX_TIMEOUT_MS;
+                timeout_ms = 15000;
+
+                println("In use!");
 
                 // Signal to red LED
-                digitalWrite(1, HIGH);
-                timeout_red_ms = MAX_TIMEOUT_RED_MS;
+                digitalWrite(PIN_OUTPUT_RED, HIGH);
+                timeout_red_ms = 1000;
             }
         }
         
         // Wait until next cycle
-        delayMicroseconds(TIMEOUT_INC_MS);
+        delayMicroseconds(10);
 
-        timeout_red_ms -= TIMEOUT_INC_MS;
-        if (timeout_red_ms < 0) {
+        timeout_red_ms -= 10;
+        if (timeout_red_ms <= 0) {
             digitalWrite(PIN_OUTPUT_RED, LOW);
         }
         
         // Decrement timeout
-        timeout_ms -= TIMEOUT_INC_MS;
+        timeout_ms -= 10;
         
         // Check if time to close sash
         if (timeout_ms < 0) {
