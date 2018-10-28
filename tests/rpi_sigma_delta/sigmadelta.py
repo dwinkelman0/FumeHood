@@ -11,28 +11,22 @@ from numpy import asarray
 
 # Initialize and warm up the camera
 stream = BytesIO()
-camera = PiCamera()
-#camera.start_preview()
+camera = PiCamera(resolution=(1296, 972), framerate=5)
 sleep(2)
 
-# Capture frame to byte stream
-t0 = time()
-camera.capture(stream, format="bmp")
-t1 = time()
-print "Capture:", t1 - t0
-stream.seek(0)
-t2 = time()
-image = Image.open(stream)
-t3 = time()
-print "Image.open():", t3 - t2
-image.save("shot.png")
-t4 = time()
-print "Image.save():", t4 - t3
+# Repeatedly capture frames to byte stream
+n_frames = 0;
+for frame in camera.capture_continuous(stream, format="jpeg"):
+	print "Processing frame", n_frames
+	stream.truncate()
+	stream.seek(0)
+	image = Image.open(stream)
+	image.save("shot_cont_%.2d.png" % n_frames)
 
-# Convert frame to a Numpy array
-array = asarray(image)
-t5 = time()
-print "numpy.asarray():", t5 - t4
+	# Break after a certain number of frames
+	n_frames += 1
+	if n_frames > 10:
+		break
 
 # Clean up
 camera.close()
