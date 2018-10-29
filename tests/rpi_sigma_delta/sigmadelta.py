@@ -1,3 +1,7 @@
+# Proof-of-concept test for sigma delta motion detection algorithm
+# References:
+# https://www.pyimagesearch.com/2015/03/30/accessing-the-raspberry-pi-camera-with-opencv-and-python/
+
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import time
