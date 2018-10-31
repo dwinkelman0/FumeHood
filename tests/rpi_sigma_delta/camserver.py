@@ -1,5 +1,12 @@
 # References:
 # https://randomnerdtutorials.com/video-streaming-with-raspberry-pi-camera/
+#
+# README: Steps for usage
+#  1. use `ifconfig -a` in the terminal to get this device's local ip address
+#  2. run this program in the background
+#  3. to view the whole page, go to <ip_address>:8000
+#  4. to view the camera stream, to to <ip_address>:8000/stream.mjpg
+#
 
 import io
 import picamera
