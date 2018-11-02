@@ -15,18 +15,8 @@ import socketserver
 from threading import Condition
 from http import server
 
-PAGE = """
-<html>
-	<head>
-	</head>
-	<body>
-		<h1>Camera Calibration</h1>
-		<center>
-			<img src="stream.mjpg" width="640" height="640"/>
-		</center>
-	</body>
-</html>
-"""
+file_index = open("camserver/index.html", "r")
+PAGE = file_index.read()
 
 # Mockup class for an IO stream
 class StreamingOutput(object):
@@ -88,8 +78,9 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 	allow_reuse_address = True
 	daemon_threads = True
 
-with picamera.PiCamera(resolution=(640, 480), framerate=24) as camera:
+with picamera.PiCamera(resolution=(480, 640), framerate=24) as camera:
 	output = StreamingOutput()
+	camera.rotation = 90
 	camera.start_recording(output, format='mjpeg')
 	try:
 		address = ('', 8000)
