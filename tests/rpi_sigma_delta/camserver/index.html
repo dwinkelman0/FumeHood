@@ -1,19 +1,12 @@
 <html>
 	<head>
-		<style>
-			.rotate90 {
-				-webkit-transform: rotate(90deg);
-				-moz-transform: rotate(90deg);
-				transform: rotate(90deg);
-			}
-		</style>
+		<link rel="stylesheet" type="text/css" href="style.css"/>
 	</head>
 	<body>
 		<h1>Camera Calibration</h1>
-		<center>
-			<img src="stream.mjpg"/>
-		</center>
-		<canvas id="drawable" background="grey">
-		</canvas>
+		<div id="container">
+			<img id="video" src="stream.mjpg"/>
+			<canvas id="drawable" width="480" height="640"></canvas>
+		</div>
 	</body>
 </html>

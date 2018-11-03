@@ -1,0 +1,23 @@
+#container {
+	display: inline-block;
+	width: 480px;
+	height: 640px;
+	margin: 0 auto;
+	background: black;
+	position: relative;
+	border: 5px solid black;
+	border-radius: 10px;
+	box-shadow: 0 5px 50px #333;
+}
+
+
+#video {
+	position: absolute;
+	z-index: 1;
+}
+
+
+#drawable {
+	position: relative;
+	z-index: 20;
+}
