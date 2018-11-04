@@ -16,7 +16,14 @@ from threading import Condition
 from http import server
 
 file_index = open("camserver/index.html", "r")
-PAGE = file_index.read()
+file_script = open("camserver/script.js", "r")
+file_style = open("camserver/style.css", "r")
+CONTENT_INDEX = file_index.read()
+CONTENT_SCRIPT = file_script.read()
+CONTENT_STYLE = file_style.read()
+file_index.close()
+file_script.close()
+file_style.close()
 
 # Mockup class for an IO stream
 class StreamingOutput(object):
@@ -41,7 +48,7 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 			self.send_header('Location', '/index.html')
 			self.end_headers()
 		elif self.path == '/index.html':
-			content = PAGE.encode('utf-8')
+			content = CONTENT_INDEX.encode('utf-8')
 			self.send_response(200)
 			self.send_header('Content-Type', 'text/html')
 			self.send_header('Content-Length', len(content))
@@ -55,6 +62,20 @@ class StreamingHandler(server.BaseHTTPRequestHandler):
 			self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
 			self.end_headers()
 			self.Stream()
+		elif self.path == '/script.js':
+			content = CONTENT_SCRIPT.encode('utf-8')
+			self.send_response(200)
+			self.send_header('Content-Type', 'text/javascript')
+			self.send_header('Content-Length', len(content))
+			self.end_headers()
+			self.wfile.write(content)
+		elif self.path == '/style.css':
+			content = CONTENT_STYLE.encode('utf-8')
+			self.send_response(200)
+			self.send_header('Content-Type', 'text/css')
+			self.send_header('Content-Length', len(content))
+			self.end_headers()
+			self.wfile.write(content)
 		else:
 			self.send_error(404)
 			self.end_headers()
