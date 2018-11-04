@@ -47,6 +47,15 @@ window.onload = function() {
 			}
 			ctx.stroke();
 		}
+
+		// Draw circles for each point
+		for (var i = 0; i < points.length; i++) {
+			ctx.strokeStyle = "#f00";
+			ctx.globalAlpha = "1.0";
+			ctx.beginPath();
+			ctx.arc(points[i].x, points[i].y, 5, 0, 2 * Math.PI);
+			ctx.stroke();
+		}
 	};
 
 	// Get buttons and set event handlers
