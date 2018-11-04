@@ -1,22 +1,30 @@
+# Proof-of-concept test for sigma delta motion detection algorithm
+# References:
+# https://www.pyimagesearch.com/2015/03/30/accessing-the-raspberry-pi-camera-with-opencv-and-python/
+
+from picamera.array import PiRGBArray
 from picamera import PiCamera
-from time import sleep
-from io import BytesIO
-from PIL import Image
-from numpy import asarray
+import time
+import numpy as np
 
-# Initialize and warm up the camera
-stream = BytesIO()
 camera = PiCamera()
-camera.start_preview()
-camera.sleep(2)
+camera.resolution = (640, 480)
+camera.framerate = 32
+raw_frame = PiRGBArray(camera, size=camera.resolution)
 
-# Capture frame to byte stream
-camera.capture(stream, format='jpeg')
-streak.seek(0)
-image = Image.open(stream)
+time.sleep(0.1)
 
-# Convert frame to a Numpy array
-array = asarray(image)
+last_image = None
 
-# Clean up
-camera.stop_preview()
+for frame in camera.capture_continuous(raw_frame, format="bgr", use_video_port=True):
+	image = frame.array
+	image = image.astype(int)
+	if last_image is not None:
+		difference = image - last_image
+		sqr_difference = np.abs(difference)
+		subtotal = np.sum(np.sum(sqr_difference))
+		subtotal_long = subtotal.astype(np.int64)
+		total = np.sum(subtotal_long)
+		print "Weighted Difference:", np.log(total)
+	last_image = image
+	raw_frame.truncate(0)
