@@ -1,3 +1,6 @@
+// References:
+// https://stackoverflow.com/questions/6396101
+
 window.onload = function() {
 
 	// Define array of polygon points
@@ -53,22 +56,35 @@ window.onload = function() {
 			ctx.strokeStyle = "#f00";
 			ctx.globalAlpha = "1.0";
 			ctx.beginPath();
-			ctx.arc(points[i].x, points[i].y, 5, 0, 2 * Math.PI);
+			ctx.arc(points[i].x, points[i].y, 10, 0, 2 * Math.PI);
 			ctx.stroke();
 		}
 	};
 
-	// Get buttons and set event handlers
-	var button_clear = document.getElementById("button-clear");
-	button_clear.onclick = function() {
+	function ClearPolygon() {
 		// Completely reset the local data
 		points = [];
 		closed = false;
-		DrawPolygon();
-	};
-	
-	var button_save = document.getElementById("button-save");
-	button_save.onclick = function() {
+	}
+
+	function LoadPolygon() {
+		// Send a GET to the server...
+		var xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = function() {
+			if (this.readyState != 4) return;
+			if (this.status == 200) {
+				var polygon = JSON.parse(this.responseText);
+				points = polygon;
+				if (points.length >= 3) closed = true;
+				else closed = false;
+				DrawPolygon();
+			}
+		}
+		xhr.open("GET", "polygon.json", true);
+		xhr.send();
+	}
+
+	function SavePolygon() {
 		// Check that there is a valid polygon (i.e. that it is closed)
 		if (!closed) {
 			alert("The polygon must be closed");
@@ -76,15 +92,32 @@ window.onload = function() {
 		}
 		
 		// Send a POST to the server...
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", "save-polygon", true);
+		xhr.setRequestHeader("Content-Type", "text/json");
+		xhr.send(JSON.stringify(points));
+	}
+
+	// Get buttons and set event handlers
+	var button_clear = document.getElementById("button-clear");
+	button_clear.onclick = function() {
+		ClearPolygon();
+		DrawPolygon();
+	}
+	
+	var button_save = document.getElementById("button-save");
+	button_save.onclick = function() {
+		SavePolygon();
 	};
 
 	var button_reload = document.getElementById("button-reload");
 	button_reload.onclick = function() {
-		// Send a GET to the server...
+		ClearPolygon();
+		LoadPolygon();
 	};
 
 	// Event handlers for the canvas
-	canvas.addEventListener('click', function(event) {
+	canvas.addEventListener("click", function(event) {
 
 		// If the polygon is already closed, don't do anything
 		if (closed) return;
@@ -101,7 +134,7 @@ window.onload = function() {
 		// If the click was near the starting point, close the loop
 		else {
 			var start = points[0];
-			if (Math.sqrt((x - start.x) * (x - start.x) + (y - start.y) * (y - start.y)) < 5) {
+			if (Math.sqrt((x - start.x) * (x - start.x) + (y - start.y) * (y - start.y)) < 10) {
 				closed = true;
 			}
 			else {
@@ -113,4 +146,8 @@ window.onload = function() {
 		DrawPolygon();
 
 	}, false);
+
+	// Initialization on page load
+	LoadPolygon();
+	DrawPolygon();
 };
