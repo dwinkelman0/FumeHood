@@ -10,6 +10,7 @@ import numpy as np
 camera = PiCamera()
 camera.resolution = (640, 480)
 camera.framerate = 32
+camera.rotation = 90
 raw_frame = PiRGBArray(camera, size=camera.resolution)
 
 time.sleep(0.1)
@@ -18,6 +19,7 @@ last_image = None
 
 for frame in camera.capture_continuous(raw_frame, format="bgr", use_video_port=True):
 	image = frame.array
+	print image.shape
 	image = image.astype(int)
 	if last_image is not None:
 		difference = image - last_image
