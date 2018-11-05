@@ -45,13 +45,9 @@ class Polygon(object):
 		# Switch x and y to match 90 degree rotation in configuration web page
 		self.points = [Point(i.x + 0.5, i.y + 0.5) for i in points_list]
 
-	def Contains(self, point):
-		# The point is inside the polygon
-		None
-
 	def GenerateMask(self, width, height):
 		# Make the data type 8 bit unsigned integer to match the output of the camera stream
-		mask = np.zeros((height, width), dtype="uint8")
+		mask = np.zeros((height, width, 3), dtype="uint8")
 
 		# Encode the points into linear equations
 		equations = [Equation(p1, p2)
@@ -70,18 +66,11 @@ class Polygon(object):
 					intersections.append(intersection)
 			intersections = sorted(intersections, key=lambda intersection: intersection.x)
 
-			print intersections
-
 			fill = 0
 			index = 0
 			for intersection in [round(i.x) for i in intersections] + [width]:
 				while index < intersection:
-					mask[y, index] = fill
+					mask[y, index] = [fill, fill, fill]
 					index += 1
 				fill = int(not fill)
-		print mask
-		
-
-pts = [Point(1, 1), Point(6, 7), Point(1, 18)]
-polygon = Polygon(pts)
-polygon.GenerateMask(10, 20)
+		return mask
