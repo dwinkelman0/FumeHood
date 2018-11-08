@@ -1,5 +1,6 @@
 # References:
 # https://randomnerdtutorials.com/video-streaming-with-raspberry-pi-camera/
+#   (Ripped off from https://github.com/waveform80/picamera/blob/master/docs/examples/web_streaming.py)
 # https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
 #
 # README:
