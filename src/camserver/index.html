@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<!-- Include scripts and stylesheets -->
+		<script type="text/javascript" src="script.js"></script>
+		<link rel="stylesheet" type="text/css" href="style.css"/>
+	</head>
+	<body>
+		<!-- Stream image nested inside a container under a drawable canvas overlay -->
+		<div id="container">
+			<img id="stream" src="stream.mjpg" width="480" height="640"/>
+			<canvas id="drawable" width="480" height="640"></canvas>
+		</div>
+		<div id="controls">
+			<button id="button-clear">
+				Clear All Points
+			</button>
+			<button id="button-save">
+				Save Points to Device
+			</button>
+			<button id="button-reload">
+				Reload Points from Device
+			</button>
+		</div>
+	</body>
+</html>

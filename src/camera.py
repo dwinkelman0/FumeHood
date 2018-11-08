@@ -25,6 +25,8 @@ class CameraStream(object):
 
 class Camera(object):
 	def __init__(self):
+		'''Object for controlling access to the RPi camera and the
+		output stream'''
 		# Create a camera object and configure basic properties
 		self.camera = PiCamera(resolution=(480, 640), framerate=24)
 		self.camera.rotation = 90
@@ -34,6 +36,8 @@ class Camera(object):
 		self.stream = CameraStream()
 
 	def GetFrames(self):
+		'''Loop for the camera to get frames and pass to the internal
+		CameraStream; this is meant to be run in its own thread'''
 		# Get frames forever
 		camera.start_recording(self.stream, format="rgb")
 		camera.wait_recording(timeout=float("inf"))
