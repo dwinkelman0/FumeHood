@@ -1,6 +1,7 @@
 from picamera import PiCamera
 from io import BytesIO
 from threading import Condition
+from time import sleep
 
 class CameraStream(object):
 	def __init__(self):
@@ -15,12 +16,12 @@ class CameraStream(object):
 		# When a frame is written to this buffer, copy the new data to
 		# a local variable and broadcast to dependent threads that
 		# there is new data
-		if buffer.startswith(b"\xff\xd8"):
-			self.buffer.truncate()
-			with self.condition:
-				self.frame = self.buffer.getvalue()
-				self.condition.notify_all()
-			self.buffer.seek(0)
+		#if buffer.startswith(b"\xff\xd8"):
+		self.buffer.truncate()
+		with self.cond_newframe:
+			self.frame = self.buffer.getvalue()
+			self.cond_newframe.notify_all()
+		self.buffer.seek(0)
 		return self.buffer.write(buffer)
 
 class Camera(object):
@@ -28,7 +29,7 @@ class Camera(object):
 		'''Object for controlling access to the RPi camera and the
 		output stream'''
 		# Create a camera object and configure basic properties
-		self.camera = PiCamera(resolution=(480, 640), framerate=24)
+		self.camera = PiCamera(resolution=(480, 640), framerate=6)
 		self.camera.rotation = 90
 
 		# Create a stream to capture frames
@@ -39,6 +40,6 @@ class Camera(object):
 		'''Loop for the camera to get frames and pass to the internal
 		CameraStream; this is meant to be run in its own thread'''
 		# Get frames forever
-		camera.start_recording(self.stream, format="rgb")
-		camera.wait_recording(timeout=float("inf"))
-		camera.stop_recording()
+		self.camera.start_recording(self.stream, format="rgb")
+		while True: sleep(1)
+		self.camera.stop_recording()
