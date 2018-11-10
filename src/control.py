@@ -16,6 +16,7 @@
 
 from camera import Camera
 import polygon
+import server
 
 import numpy as np
 import threading
@@ -129,6 +130,9 @@ def Main():
 
 	# Start the frames processing thread
 	threading.Thread(target=MonitorFrames, args=(camera, control_thread)).start()
+
+	# Start the server thread
+	threading.Thread(target=server.RunServer, args=[camera]).start()
 
 if __name__ == "__main__":
 	Main()
