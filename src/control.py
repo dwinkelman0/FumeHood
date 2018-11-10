@@ -61,12 +61,13 @@ def MonitorFrames(camera, control):
 			pts_str = polygon_file.read()
 			pts = [polygon.Point(i["x"], i["y"]) for i in eval(pts_str)]
 			shape = polygon.Polygon(pts)
-			
+
 			mask = shape.GenerateMask(width, height)
 			mask_weight = np.sum(np.sum(np.sum(mask)))
 			print("Created mask")
 	except:
 		print("Error with creating polygon mask")
+		mask_weight = width * height * 3
 
 	while True:
 		with camera.stream.cond_newframe:
@@ -75,13 +76,18 @@ def MonitorFrames(camera, control):
 			last_frame = current_frame
 			# Cast frame into a numpy array
 			current_frame = np.frombuffer(camera.stream.frame, dtype="uint8")
+
+		# Make sure there was data in the buffer
+		if current_frame.size != 0:
 			current_frame.shape = (height, width, 3)
+		else:
+			continue
 
 		# Perform sigma delta check
 		if mask is not None:
 			current_frame = np.multiply(current_frame, mask)
 		current_frame = current_frame.astype("int32")
-		if last_frame is not None:
+		if last_frame is not None and last_frame.size != 0:
 			difference = np.abs(current_frame - last_frame)
 			subtotal = np.sum(np.sum(difference)).astype("int64")
 			total = np.sum(subtotal) / mask_weight # Average change per pixel
