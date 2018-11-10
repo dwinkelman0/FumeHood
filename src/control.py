@@ -61,8 +61,15 @@ def MonitorFrames(camera, control):
 			pts_str = polygon_file.read()
 			pts = [polygon.Point(i["x"], i["y"]) for i in eval(pts_str)]
 			shape = polygon.Polygon(pts)
-
 			mask = shape.GenerateMask(width, height)
+
+			# Slice only the part of the mask/frame that is relevant
+			# Huge performance boost for processing
+			x_coords, y_coords = [int(i.x) for i in pts], [int(i.y) for i in pts]
+			mask_xmin, mask_xmax = min(x_coords), max(x_coords)
+			mask_ymin, mask_ymax = min(y_coords), max(y_coords)
+			mask = mask[mask_ymin:mask_ymax, mask_xmin:mask_xmax]
+
 			mask_weight = np.sum(np.sum(np.sum(mask)))
 			print("Created mask")
 	except:
@@ -85,6 +92,9 @@ def MonitorFrames(camera, control):
 
 		# Perform sigma delta check
 		if mask is not None:
+			# Slice only the part of the mask/frame that is relevant
+			# Huge performance boost for processing
+			current_frame = current_frame[mask_ymin:mask_ymax, mask_xmin:mask_xmax]
 			current_frame = np.multiply(current_frame, mask)
 		current_frame = current_frame.astype("int32")
 		if last_frame is not None and last_frame.size != 0:
