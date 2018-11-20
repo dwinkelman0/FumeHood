@@ -40,6 +40,9 @@ GPIO_OUT_LED_RED = 33
 GPIO_OUT_LED_YELLOW = 35
 GPIO_OUT_LED_GREEN = 37
 
+GPIO_IN_BUTTON_SASH = 36
+GPIO_IN_BUTTON_OVERRIDE = 38
+
 class ControlThread(threading.Thread):
 	def __init__(self):
 		super(ControlThread, self).__init__(target=self.Main)
@@ -65,6 +68,7 @@ class ControlThread(threading.Thread):
 
 	def StopMotor(self):
 		'''Stop the motor'''
+		pass
 
 	@staticmethod
 	def BlinkLED(led, duration, cycles):
@@ -200,9 +204,16 @@ def MonitorFrames(camera, control):
 				control.interrupt_code = INTERRUPT_ACTIVITY
 				control.cond_interrupt.notify_all()
 
+def InterruptSashClosed(control):
+	pass
+
+def InterruptOverride(control):
+	pass
+
 def MonitorGPIO(control):
 	'''Monitor GPIO inputs for manual override and motor encoder'''
-	
+	GPIO.add_event_detect(GPIO_IN_BUTTON_SASH, GPIO.RISING, lambda pin: InterruptSashClosed(control))
+	GPIO.add_event_detect(GPIO_IN_BUTTON_OVERRIDE, GPIO.RISING, lambda pin: InterruptOverride(control))
 
 def Main():
 	# Initialize GPIO
