@@ -23,6 +23,10 @@ import threading
 import time
 import math
 
+# Timeout preferences
+TIME_UNTIL_SASH_CLOSE = 3 * 60		# 3 minutes
+TIME_FOR_MANUAL_OVERRIDE = 10 * 60	# 10 minutes
+
 # Interrupt codes for the control thread
 INTERRUPT_NONE = 0
 INTERRUPT_ACTIVITY = 1
@@ -36,15 +40,74 @@ class ControlThread(threading.Thread):
 		super(ControlThread, self).__init__(target=self.Main)
 		self.cond_interrupt = threading.Condition()
 		self.interrupt_code = INTERRUPT_NONE
+		self.cond_override = threading.Condition()
+
+	def GetInterruptCode(self):
+		'''Get the code associated with the most recent interrupt (and reset)'''
+		code = self.interrupt_code
+		self.interrupt_code = INTERRUPT_NONE
+		return code
+
+	def IsSashClosed(self):
+		'''Determine whether the sash is closed'''
+		return False
+
+	def StartMotor(self):
+		'''Start the motor'''
+		pass
+
+	def StopMotor(self):
+		'''Stop the motor'''
+
+	def WaitManualOverride(self):
+		'''Wait until the manual override is done'''
+		while True:
+			with self.cond_override:	
+				if self.cond_override.wait(TIME_FOR_MANUAL_OVERRIDE):
+					# The override button was pressed again
+					pass
+				else:
+					# Done waiting
+					# Exits back to top of function
+					break
 
 	def Main(self):
 		while True:
-			with self.cond_interrupt:
-				# Wait until an interrupt is called
-				self.cond_interrupt.wait()
-				code = self.interrupt_code
+			# The sash is closed: wait until it is not closed anymore
+			while self.IsSashClosed():
+				time.sleep(1)
 
-				print("Activity Interrupt")
+			# The sash is open: wait for something to happen
+			with self.cond_interrupt:
+				if self.cond_interrupt.wait(TIME_UNTIL_SASH_CLOSE):
+					# An event happened
+					code = self.GetInterruptCode()
+					if code == INTERRUPT_MANUAL_OVERRIDE:
+						self.WaitManualOverride()
+						continue
+					elif code == INTERRUPT_ACTIVITY:
+						# Activity detected by the camera
+						# Exit back to top of function and reset the wait
+						continue
+					elif code == INTERRUPT_SASH_CLOSED:
+						# The sash is closed
+						# Exit back to top of function and wait until it is not closed
+						continue
+				else:
+					# Nothing happened: close the sash
+					self.StartMotor()
+					with self.cond_interrupt:
+						self.cond_interrupt.wait()
+						code = self.GetInterruptCode()
+						if code == INTERRUPT_SASH_CLOSED:
+							# The sash is closed: we are done
+							self.StopMotor()
+							continue
+						elif code == INTERRUPT_MANUAL_OVERRIDE:
+							# Manual override engaged: stop motor
+							self.StopMotor()
+							self.WaitManualOverride()
+
 
 def MonitorFrames(camera, control):
 	'''Compare current frame to last frame as they are generated'''
