@@ -18,6 +18,8 @@ from camera import Camera
 import polygon
 import server
 
+import RPi.GPIO as GPIO
+
 import numpy as np
 import threading
 import time
@@ -34,10 +36,15 @@ INTERRUPT_MANUAL_OVERRIDE = 2
 INTERRUPT_SASH_CLOSED = 3
 
 # GPIO pins
+GPIO_OUT_LED_RED = 33
+GPIO_OUT_LED_YELLOW = 35
+GPIO_OUT_LED_GREEN = 37
 
 class ControlThread(threading.Thread):
 	def __init__(self):
 		super(ControlThread, self).__init__(target=self.Main)
+
+		# Initialize interrupts for multithreading
 		self.cond_interrupt = threading.Condition()
 		self.interrupt_code = INTERRUPT_NONE
 		self.cond_override = threading.Condition()
@@ -59,23 +66,37 @@ class ControlThread(threading.Thread):
 	def StopMotor(self):
 		'''Stop the motor'''
 
+	@staticmethod
+	def BlinkLED(led, duration, cycles):
+		'''Blink the LED on and off for a certain duration for a certain number of cycles'''
+		for i in range(cycles):
+			GPIO.output(led, GPIO.LOW)
+			time.sleep(duration)
+			GPIO.output(led, GPIO.HIGH)
+			time.sleep(duration)
+
 	def WaitManualOverride(self):
 		'''Wait until the manual override is done'''
+		# Turn on yellow light until override done
+		GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.LOW)
 		while True:
 			with self.cond_override:	
 				if self.cond_override.wait(TIME_FOR_MANUAL_OVERRIDE):
 					# The override button was pressed again
 					pass
 				else:
-					# Done waiting
-					# Exits back to top of function
-					break
+					# Done waiting, return
+					GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
+					return
 
 	def Main(self):
 		while True:
 			# The sash is closed: wait until it is not closed anymore
 			while self.IsSashClosed():
+				# Turn on green LED while the sash is closed
+				GPIO.output(GPIO_OUT_LED_GREEN, GPIO.LOW)
 				time.sleep(1)
+			GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
 
 			# The sash is open: wait for something to happen
 			with self.cond_interrupt:
@@ -88,6 +109,9 @@ class ControlThread(threading.Thread):
 					elif code == INTERRUPT_ACTIVITY:
 						# Activity detected by the camera
 						# Exit back to top of function and reset the wait
+						# Blink the red light once
+						threading.Thread(target=ControlThread.BlinkLED,
+							args=(GPIO_OUT_LED_RED, 0.25, 1)).start()
 						continue
 					elif code == INTERRUPT_SASH_CLOSED:
 						# The sash is closed
@@ -181,6 +205,15 @@ def MonitorGPIO(control):
 	
 
 def Main():
+	# Initialize GPIO
+	GPIO.setmode(GPIO.BOARD)
+	GPIO.setup(GPIO_OUT_LED_RED, GPIO.OUT)
+	GPIO.setup(GPIO_OUT_LED_YELLOW, GPIO.OUT)
+	GPIO.setup(GPIO_OUT_LED_GREEN, GPIO.OUT)
+	GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
+	GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
+	GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
+
 	# Create the main control thread
 	control_thread = ControlThread()
 	control_thread.start()
