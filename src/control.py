@@ -69,6 +69,9 @@ def MonitorFrames(camera, control):
 			x_coords, y_coords = [int(i.x) for i in pts], [int(i.y) for i in pts]
 			mask_xmin, mask_xmax = min(x_coords), max(x_coords)
 			mask_ymin, mask_ymax = min(y_coords), max(y_coords)
+			# Ensure the slices are within domain
+			mask_xmin, mask_xmax = max(mask_xmin, 0), min(mask_xmax, width - 1)
+			mask_ymin, mask_ymax = max(mask_ymin, 0), min(mask_ymax, height - 1)
 			mask = mask[mask_ymin:mask_ymax, mask_xmin:mask_xmax]
 
 			mask_weight = np.sum(np.sum(np.sum(mask)))
@@ -99,11 +102,13 @@ def MonitorFrames(camera, control):
 			current_frame = np.multiply(current_frame, mask)
 		current_frame = current_frame.astype("int32")
 		if last_frame is not None and last_frame.size != 0:
-			difference = np.abs(current_frame - last_frame)
+			difference = np.square(current_frame - last_frame) # Non-linearity helps bring out meaningful changes
 			subtotal = np.sum(np.sum(difference)).astype("int64")
 			total = np.sum(subtotal) / mask_weight # Average change per pixel
 			print("Activity: %.3f" % total)
-			activity = total > 5 # Completely arbitrary
+			activity = total > 15 # Completely arbitrary
+			# 15 (with the sqrare function) seems to avoid noise like ambiance/shadows,
+			# but still plenty to detect even far-away motion
 		else:
 			activity = False
 
