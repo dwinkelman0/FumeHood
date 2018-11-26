@@ -26,8 +26,10 @@ import time
 import math
 
 # Timeout preferences
-TIME_UNTIL_SASH_CLOSE = 3 * 60		# 3 minutes
-TIME_FOR_MANUAL_OVERRIDE = 10 * 60	# 10 minutes
+#TIME_UNTIL_SASH_CLOSE = 3 * 60		# 3 minutes
+#TIME_FOR_MANUAL_OVERRIDE = 10 * 60	# 10 minutes
+TIME_UNTIL_SASH_CLOSE = 10
+TIME_FOR_MANUAL_OVERRIDE = 5
 
 # Interrupt codes for the control thread
 INTERRUPT_NONE = 0
@@ -60,15 +62,15 @@ class ControlThread(threading.Thread):
 
 	def IsSashClosed(self):
 		'''Determine whether the sash is closed'''
-		return False
+		return GPIO.input(GPIO_IN_BUTTON_SASH)
 
 	def StartMotor(self):
 		'''Start the motor'''
-		pass
+		print("Start motor")
 
 	def StopMotor(self):
 		'''Stop the motor'''
-		pass
+		print("Stop motor")
 
 	@staticmethod
 	def BlinkLED(led, duration, cycles):
@@ -82,12 +84,13 @@ class ControlThread(threading.Thread):
 	def WaitManualOverride(self):
 		'''Wait until the manual override is done'''
 		# Turn on yellow light until override done
+		print("Wait Manual Override")
 		GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.LOW)
 		while True:
 			with self.cond_override:	
 				if self.cond_override.wait(TIME_FOR_MANUAL_OVERRIDE):
 					# The override button was pressed again
-					pass
+					print("Manual override again")
 				else:
 					# Done waiting, return
 					GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
@@ -114,8 +117,10 @@ class ControlThread(threading.Thread):
 						# Activity detected by the camera
 						# Exit back to top of function and reset the wait
 						# Blink the red light once
-						threading.Thread(target=ControlThread.BlinkLED,
-							args=(GPIO_OUT_LED_RED, 0.25, 1)).start()
+						GPIO.output(GPIO_OUT_LED_RED, GPIO.LOW)
+						time.sleep(0.5)
+						GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
+						time.sleep(0.5)
 						continue
 					elif code == INTERRUPT_SASH_CLOSED:
 						# The sash is closed
@@ -210,29 +215,46 @@ def MonitorFrames(camera, control):
 				control.cond_interrupt.notify_all()
 
 def InterruptSashClosed(control):
-	pass
+	with control.cond_interrupt:
+		control.interrupt_code = INTERRUPT_SASH_CLOSED
+		control.cond_interrupt.notify_all()
 
 def InterruptOverride(control):
-	pass
+	with control.cond_interrupt:
+		control.interrupt_code = INTERRUPT_MANUAL_OVERRIDE
+		control.cond_interrupt.notify_all()
+	with control.cond_override:
+		control.cond_override.notify_all()
 
 def MonitorGPIO(control):
 	'''Monitor GPIO inputs for manual override and motor encoder'''
 	GPIO.add_event_detect(GPIO_IN_BUTTON_SASH, GPIO.RISING, lambda pin: InterruptSashClosed(control))
-	GPIO.add_event_detect(GPIO_IN_BUTTON_OVERRIDE, GPIO.RISING, lambda pin: InterruptOverride(control))
+	GPIO.add_event_detect(GPIO_IN_BUTTON_OVERRIDE, GPIO.FALLING, lambda pin: InterruptOverride(control))
 
-def Main():
-	# Initialize GPIO
+def SetupGPIO():
+	'''Initialize the GPIO library and pins'''
 	GPIO.setmode(GPIO.BOARD)
+
 	GPIO.setup(GPIO_OUT_LED_RED, GPIO.OUT)
 	GPIO.setup(GPIO_OUT_LED_YELLOW, GPIO.OUT)
 	GPIO.setup(GPIO_OUT_LED_GREEN, GPIO.OUT)
+	GPIO.setup(GPIO_IN_BUTTON_SASH, GPIO.IN)
+	GPIO.setup(GPIO_IN_BUTTON_OVERRIDE, GPIO.IN)
+
 	GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
 	GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
 	GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
 
+def Main():
+	# Initialize GPIO
+	SetupGPIO()
+
 	# Create the main control thread
 	control_thread = ControlThread()
 	control_thread.start()
+
+	# Start listening to GPIO inputs
+	MonitorGPIO(control_thread)
 
 	# Create a camera with an enclosed frame stream
 	camera = Camera()
