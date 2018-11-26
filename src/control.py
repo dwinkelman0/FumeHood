@@ -52,7 +52,6 @@ class ControlThread(threading.Thread):
 		# Initialize interrupts for multithreading
 		self.cond_interrupt = threading.Condition()
 		self.interrupt_code = INTERRUPT_NONE
-		self.cond_override = threading.Condition()
 
 	def GetInterruptCode(self):
 		'''Get the code associated with the most recent interrupt (and reset)'''
@@ -86,15 +85,15 @@ class ControlThread(threading.Thread):
 		# Turn on yellow light until override done
 		print("Wait Manual Override")
 		GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.LOW)
-		while True:
-			with self.cond_override:	
-				if self.cond_override.wait(TIME_FOR_MANUAL_OVERRIDE):
-					# The override button was pressed again
-					print("Manual override again")
-				else:
-					# Done waiting, return
-					GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
-					return
+		release_time = time.time() + TIME_FOR_MANUAL_OVERRIDE
+		while time.time() < release_time:
+			with self.cond_interrupt:
+				if self.cond_interrupt.wait(release_time - time.time()):
+					if self.interrupt_code == INTERRUPT_MANUAL_OVERRIDE:
+						release_time = time.time() + TIME_FOR_MANUAL_OVERRIDE
+					elif self.interrupt_code == INTERRUPT_SASH_CLOSED:
+						break
+		GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
 
 	def Main(self):
 		while True:
@@ -129,17 +128,19 @@ class ControlThread(threading.Thread):
 				else:
 					# Nothing happened: close the sash
 					self.StartMotor()
-					with self.cond_interrupt:
-						self.cond_interrupt.wait()
-						code = self.GetInterruptCode()
-						if code == INTERRUPT_SASH_CLOSED:
-							# The sash is closed: we are done
-							self.StopMotor()
-							continue
-						elif code == INTERRUPT_MANUAL_OVERRIDE:
-							# Manual override engaged: stop motor
-							self.StopMotor()
-							self.WaitManualOverride()
+					while True:
+						with self.cond_interrupt:
+							self.cond_interrupt.wait()
+							code = self.GetInterruptCode()
+							if code == INTERRUPT_SASH_CLOSED:
+								# The sash is closed: we are done
+								self.StopMotor()
+								break
+							elif code == INTERRUPT_MANUAL_OVERRIDE:
+								# Manual override engaged: stop motor
+								self.StopMotor()
+								self.WaitManualOverride()
+								break
 
 
 def MonitorFrames(camera, control):
@@ -223,8 +224,6 @@ def InterruptOverride(control):
 	with control.cond_interrupt:
 		control.interrupt_code = INTERRUPT_MANUAL_OVERRIDE
 		control.cond_interrupt.notify_all()
-	with control.cond_override:
-		control.cond_override.notify_all()
 
 def MonitorGPIO(control):
 	'''Monitor GPIO inputs for manual override and motor encoder'''
