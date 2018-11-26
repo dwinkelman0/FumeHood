@@ -42,6 +42,8 @@ GPIO_OUT_LED_RED = 33
 GPIO_OUT_LED_YELLOW = 35
 GPIO_OUT_LED_GREEN = 37
 
+GPIO_OUT_MOTOR = 31
+
 GPIO_IN_BUTTON_SASH = 36
 GPIO_IN_BUTTON_OVERRIDE = 38
 
@@ -66,10 +68,12 @@ class ControlThread(threading.Thread):
 	def StartMotor(self):
 		'''Start the motor'''
 		print("Start motor")
+		GPIO.output(GPIO_OUT_MOTOR, GPIO.HIGH)
 
 	def StopMotor(self):
 		'''Stop the motor'''
 		print("Stop motor")
+		GPIO.output(GPIO_OUT_MOTOR, GPIO.LOW)
 
 	@staticmethod
 	def BlinkLED(led, duration, cycles):
@@ -237,12 +241,14 @@ def SetupGPIO():
 	GPIO.setup(GPIO_OUT_LED_RED, GPIO.OUT)
 	GPIO.setup(GPIO_OUT_LED_YELLOW, GPIO.OUT)
 	GPIO.setup(GPIO_OUT_LED_GREEN, GPIO.OUT)
+	GPIO.setup(GPIO_OUT_MOTOR, GPIO.OUT)
 	GPIO.setup(GPIO_IN_BUTTON_SASH, GPIO.IN)
 	GPIO.setup(GPIO_IN_BUTTON_OVERRIDE, GPIO.IN)
 
 	GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
 	GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
 	GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
+	GPIO.output(GPIO_OUT_MOTOR, GPIO.LOW)
 
 def Main():
 	# Initialize GPIO
