@@ -158,6 +158,8 @@ class ControlThread(threading.Thread):
 					elif self.interrupt_code == INTERRUPT_SASH_CLOSED:
 						break
 					elif self.interrupt_code == INTERRUPT_RAISE_SASH:
+						# Turn off LED early
+						GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
 						self.OpenSash()
 						break
 		GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
@@ -173,6 +175,7 @@ class ControlThread(threading.Thread):
 				code = self.GetInterruptCode()
 				if code == INTERRUPT_RAISE_SASH:
 					# User requesting sash raise
+					GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
 					self.OpenSash()
 				elif code == INTERRUPT_SASH_NOT_CLOSED:
 					# Sash is no longer closed
