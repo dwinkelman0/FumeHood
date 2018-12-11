@@ -13,6 +13,13 @@
 #   motor to close the sash while continuing to monitor the region for motion
 #   as well as keeping track of the sash's position. It also interacts with a
 #   manual override mechanism.
+#
+#   This program uses an extensive system of interrupts. Interrupts, as we have
+#   implemented them, are events that happen within a multithreaded program.
+#   The GPIO library monitors pins and creates events when inputs change states,
+#   and the camera frame handler creates events whenever enough change in the
+#   frame's pixels is detected. These interrupts are selectively handled
+#   depending on where the program is within its flow.
 
 from camera import Camera
 import polygon
@@ -35,15 +42,24 @@ TIME_FOR_MANUAL_OVERRIDE = 5
 INTERRUPT_NONE = 0
 INTERRUPT_ACTIVITY = 1
 INTERRUPT_MANUAL_OVERRIDE = 2
-INTERRUPT_SASH_CLOSED = 3
+
+INTERRUPT_SASH_CLOSED = 4
+INTERRUPT_SASH_NOT_CLOSED = 5
+INTERRUPT_SASH_ENTIRELY_OPEN = 6
+INTERRUPT_SASH_NOT_ENTIRELY_OPEN = 7
+
+INTERRUPT_RAISE_SASH = 10
+INTERRUPT_NOT_RAISE_SASH = 11
 
 # GPIO pins
 GPIO_OUT_LED_RED = 33
 GPIO_OUT_LED_YELLOW = 35
 GPIO_OUT_LED_GREEN = 37
 
-GPIO_OUT_MOTOR = 31
+GPIO_OUT_MOTOR_DOWN = 31
+GPIO_OUT_MOTOR_UP = 29
 
+GPIO_IN_BUTTON_RAISE = 32
 GPIO_IN_BUTTON_SASH = 36
 GPIO_IN_BUTTON_OVERRIDE = 38
 
@@ -55,6 +71,15 @@ class ControlThread(threading.Thread):
 		self.cond_interrupt = threading.Condition()
 		self.interrupt_code = INTERRUPT_NONE
 
+	@staticmethod
+	def BlinkLED(led, duration, cycles):
+		'''Blink the LED on and off for a certain duration for a certain number of cycles'''
+		for i in range(cycles):
+			GPIO.output(led, GPIO.LOW)
+			time.sleep(duration)
+			GPIO.output(led, GPIO.HIGH)
+			time.sleep(duration)
+
 	def GetInterruptCode(self):
 		'''Get the code associated with the most recent interrupt (and reset)'''
 		code = self.interrupt_code
@@ -65,27 +90,62 @@ class ControlThread(threading.Thread):
 		'''Determine whether the sash is closed'''
 		return GPIO.input(GPIO_IN_BUTTON_SASH)
 
-	def StartMotor(self):
-		'''Start the motor'''
-		print("Start motor")
-		GPIO.output(GPIO_OUT_MOTOR, GPIO.HIGH)
+	def CloseSash(self):
+		'''Close the sash using the motor'''
+		print("Close sash")
+		# Start motor
+		GPIO.output(GPIO_OUT_MOTOR_DOWN, GPIO.HIGH)
+		while True:
+			with self.cond_interrupt:
+				self.cond_interrupt.wait()
+				code = self.GetInterruptCode()
+				if code == INTERRUPT_SASH_CLOSED:
+					# The sash is closed: we are done
+					# Stop motor
+					GPIO.output(GPIO_OUT_MOTOR_DOWN, GPIO.LOW)
+					break
+				elif code == INTERRUPT_MANUAL_OVERRIDE:
+					# Manual override engaged: stop motor
+					# Stop motor
+					GPIO.output(GPIO_OUT_MOTOR_DOWN, GPIO.LOW)
+					self.WaitManualOverride()
+					break
+				elif code == INTERRUPT_RAISE_SASH:
+					# The sash is to be raised per user instruction: engage motor in opposite direction
+					# Stop motor
+					GPIO.output(GPIO_OUT_MOTOR_DOWN, GPIO.LOW)
+					self.OpenSash()
+					break
 
-	def StopMotor(self):
-		'''Stop the motor'''
-		print("Stop motor")
-		GPIO.output(GPIO_OUT_MOTOR, GPIO.LOW)
-
-	@staticmethod
-	def BlinkLED(led, duration, cycles):
-		'''Blink the LED on and off for a certain duration for a certain number of cycles'''
-		for i in range(cycles):
-			GPIO.output(led, GPIO.LOW)
-			time.sleep(duration)
-			GPIO.output(led, GPIO.HIGH)
-			time.sleep(duration)
+	def OpenSash(self):
+		'''Open the sash while the user presses the button'''
+		print("Open sash")
+		# Start motor
+		GPIO.output(GPIO_OUT_MOTOR_UP, GPIO.HIGH)
+		while True:
+			with self.cond_interrupt:
+				self.cond_interrupt.wait()
+				code = self.GetInterruptCode()
+				if code == INTERRUPT_SASH_ENTIRELY_OPEN:
+					# The sash is completely open: we are done
+					# Stop motor
+					GPIO.output(GPIO_OUT_MOTOR_UP, GPIO.LOW)
+					break
+				elif code == INTERRUPT_MANUAL_OVERRIDE:
+					# Manual override engaged: stop motor
+					# Stop motor
+					GPIO.output(GPIO_OUT_MOTOR_UP, GPIO.LOW)
+					self.WaitManualOverride()
+					break
+				elif code == INTERRUPT_NOT_RAISE_SASH:
+					# The raise sash button is no longer pressed
+					# Stop motor
+					GPIO.output(GPIO_OUT_MOTOR_UP, GPIO.LOW)
+					break
 
 	def WaitManualOverride(self):
 		'''Wait until the manual override is done'''
+		print("Manual Override")
 		# Turn on yellow light until override done
 		print("Wait Manual Override")
 		GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.LOW)
@@ -97,16 +157,33 @@ class ControlThread(threading.Thread):
 						release_time = time.time() + TIME_FOR_MANUAL_OVERRIDE
 					elif self.interrupt_code == INTERRUPT_SASH_CLOSED:
 						break
+					elif self.interrupt_code == INTERRUPT_RAISE_SASH:
+						self.OpenSash()
+						break
 		GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
+
+	def WaitSashClosed(self):
+		while self.IsSashClosed():
+			print("Wait Sash Closed")
+			# Turn on green LED while the sash is closed
+			GPIO.output(GPIO_OUT_LED_GREEN, GPIO.LOW)
+
+			with self.cond_interrupt:
+				self.cond_interrupt.wait()
+				code = self.GetInterruptCode()
+				if code == INTERRUPT_RAISE_SASH:
+					# User requesting sash raise
+					self.OpenSash()
+				elif code == INTERRUPT_SASH_NOT_CLOSED:
+					# Sash is no longer closed
+					break
+
+		GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
 
 	def Main(self):
 		while True:
 			# The sash is closed: wait until it is not closed anymore
-			while self.IsSashClosed():
-				# Turn on green LED while the sash is closed
-				GPIO.output(GPIO_OUT_LED_GREEN, GPIO.LOW)
-				time.sleep(1)
-			GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
+			self.WaitSashClosed()
 
 			# The sash is open: wait for something to happen
 			with self.cond_interrupt:
@@ -129,23 +206,13 @@ class ControlThread(threading.Thread):
 						# The sash is closed
 						# Exit back to top of function and wait until it is not closed
 						continue
+					elif code == INTERRUPT_RAISE_SASH:
+						# User requesting sash raise
+						self.OpenSash()
+						continue
 				else:
 					# Nothing happened: close the sash
-					self.StartMotor()
-					while True:
-						with self.cond_interrupt:
-							self.cond_interrupt.wait()
-							code = self.GetInterruptCode()
-							if code == INTERRUPT_SASH_CLOSED:
-								# The sash is closed: we are done
-								self.StopMotor()
-								break
-							elif code == INTERRUPT_MANUAL_OVERRIDE:
-								# Manual override engaged: stop motor
-								self.StopMotor()
-								self.WaitManualOverride()
-								break
-
+					self.CloseSash()
 
 def MonitorFrames(camera, control):
 	'''Compare current frame to last frame as they are generated'''
@@ -219,20 +286,27 @@ def MonitorFrames(camera, control):
 				control.interrupt_code = INTERRUPT_ACTIVITY
 				control.cond_interrupt.notify_all()
 
-def InterruptSashClosed(control):
+def Interrupt(control, pin, rising_code=None, falling_code=None):
 	with control.cond_interrupt:
-		control.interrupt_code = INTERRUPT_SASH_CLOSED
-		control.cond_interrupt.notify_all()
-
-def InterruptOverride(control):
-	with control.cond_interrupt:
-		control.interrupt_code = INTERRUPT_MANUAL_OVERRIDE
-		control.cond_interrupt.notify_all()
+		if GPIO.input(pin):
+			# Rising transition ends on HIGH
+			print("Rising %d" % pin)
+			if rising_code is not None:
+				control.interrupt_code = rising_code
+				control.cond_interrupt.notify_all()
+		else:
+			# Falling transition ends on LOW
+			print("Falling %d" % pin)
+			if falling_code is not None:
+				control.interrupt_code = falling_code
+				control.cond_interrupt.notify_all()
 
 def MonitorGPIO(control):
-	'''Monitor GPIO inputs for manual override and motor encoder'''
-	GPIO.add_event_detect(GPIO_IN_BUTTON_SASH, GPIO.RISING, lambda pin: InterruptSashClosed(control))
-	GPIO.add_event_detect(GPIO_IN_BUTTON_OVERRIDE, GPIO.FALLING, lambda pin: InterruptOverride(control))
+	'''Monitor GPIO inputs for manual override, sash raise, and sash limits'''
+
+	GPIO.add_event_detect(GPIO_IN_BUTTON_SASH, GPIO.BOTH, lambda pin: Interrupt(control, pin, INTERRUPT_SASH_CLOSED, INTERRUPT_SASH_NOT_CLOSED))
+	GPIO.add_event_detect(GPIO_IN_BUTTON_OVERRIDE, GPIO.BOTH, lambda pin: Interrupt(control, pin, None, INTERRUPT_MANUAL_OVERRIDE))
+	GPIO.add_event_detect(GPIO_IN_BUTTON_RAISE, GPIO.BOTH, lambda pin: Interrupt(control, pin, INTERRUPT_NOT_RAISE_SASH, INTERRUPT_RAISE_SASH))
 
 def SetupGPIO():
 	'''Initialize the GPIO library and pins'''
@@ -241,14 +315,17 @@ def SetupGPIO():
 	GPIO.setup(GPIO_OUT_LED_RED, GPIO.OUT)
 	GPIO.setup(GPIO_OUT_LED_YELLOW, GPIO.OUT)
 	GPIO.setup(GPIO_OUT_LED_GREEN, GPIO.OUT)
-	GPIO.setup(GPIO_OUT_MOTOR, GPIO.OUT)
+	GPIO.setup(GPIO_OUT_MOTOR_DOWN, GPIO.OUT)
+	GPIO.setup(GPIO_OUT_MOTOR_UP, GPIO.OUT)
 	GPIO.setup(GPIO_IN_BUTTON_SASH, GPIO.IN)
 	GPIO.setup(GPIO_IN_BUTTON_OVERRIDE, GPIO.IN)
+	GPIO.setup(GPIO_IN_BUTTON_RAISE, GPIO.IN)
 
 	GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
 	GPIO.output(GPIO_OUT_LED_YELLOW, GPIO.HIGH)
 	GPIO.output(GPIO_OUT_LED_GREEN, GPIO.HIGH)
-	GPIO.output(GPIO_OUT_MOTOR, GPIO.LOW)
+	GPIO.output(GPIO_OUT_MOTOR_DOWN, GPIO.LOW)
+	GPIO.output(GPIO_OUT_MOTOR_UP, GPIO.LOW)
 
 def Main():
 	# Initialize GPIO

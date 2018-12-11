@@ -30,7 +30,7 @@ class Camera(object):
 		output stream'''
 		# Create a camera object and configure basic properties
 		self.camera = PiCamera(resolution=(480, 640), framerate=6)
-		self.camera.rotation = 90
+		self.camera.rotation = 270
 
 		# Create a stream to capture frames
 		# Processes using the camera will hook into this stream's condition variable
