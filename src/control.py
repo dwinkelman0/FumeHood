@@ -71,6 +71,11 @@ class ControlThread(threading.Thread):
 		self.cond_interrupt = threading.Condition()
 		self.interrupt_code = INTERRUPT_NONE
 
+		# Initialize blink red light thread
+		self.cond_led = threading.Condition()
+		self.led_thread = threading.Thread(target=self.LEDThread)
+		self.led_thread.start()
+
 	@staticmethod
 	def BlinkLED(led, duration, cycles):
 		'''Blink the LED on and off for a certain duration for a certain number of cycles'''
@@ -79,6 +84,16 @@ class ControlThread(threading.Thread):
 			time.sleep(duration)
 			GPIO.output(led, GPIO.HIGH)
 			time.sleep(duration)
+
+	def LEDThread(self):
+		while True:
+			GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
+			with self.cond_led:
+				if self.cond_led.wait():
+					GPIO.output(GPIO_OUT_LED_RED, GPIO.LOW)
+				while self.cond_led.wait(0.5):
+					continue
+			GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
 
 	def GetInterruptCode(self):
 		'''Get the code associated with the most recent interrupt (and reset)'''
@@ -200,10 +215,12 @@ class ControlThread(threading.Thread):
 						# Activity detected by the camera
 						# Exit back to top of function and reset the wait
 						# Blink the red light once
-						GPIO.output(GPIO_OUT_LED_RED, GPIO.LOW)
-						time.sleep(0.5)
-						GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
-						time.sleep(0.5)
+						#GPIO.output(GPIO_OUT_LED_RED, GPIO.LOW)
+						#time.sleep(0.5)
+						#GPIO.output(GPIO_OUT_LED_RED, GPIO.HIGH)
+						#time.sleep(0.5)
+						with self.cond_led:
+							self.cond_led.notify_all()
 						continue
 					elif code == INTERRUPT_SASH_CLOSED:
 						# The sash is closed
