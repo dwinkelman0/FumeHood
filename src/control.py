@@ -356,6 +356,7 @@ def Main():
 	control_thread.start()
 
 	# Start listening to GPIO inputs
+	# Perform on the main thread to continue program
 	MonitorGPIO(control_thread)
 
 	# Create a camera with an enclosed frame stream
