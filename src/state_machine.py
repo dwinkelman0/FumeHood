@@ -97,12 +97,12 @@ class StateMachine(threading.Thread):
 		return None
 
 if __name__ == '__main__':
-	fhgpio.Init()
+	#fhgpio.Init()
 
 	state_machine = StateMachine()
-	state_machine.start()
+	#state_machine.start()
 
-	state_machine.interrupt.InitTriggers()
+	#state_machine.interrupt.InitTriggers()
 
 	camera = Camera()
 	threading.Thread(target=camera.GetFrames).start()

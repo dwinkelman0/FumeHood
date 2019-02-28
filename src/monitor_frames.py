@@ -39,6 +39,7 @@ def MonitorFrames(camera, interrupt):
 		mask_weight = width * height * 3
 
 	while True:
+		print("MonitorFrames: waiting for frame...")
 		with camera.stream.cond_newframe:
 			# Wait for a new frame
 			camera.stream.cond_newframe.wait()
