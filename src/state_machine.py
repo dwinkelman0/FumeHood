@@ -58,9 +58,13 @@ class StateMachine(threading.Thread):
 		# Set outputs
 		fhgpio.Clear()
 
+		# This is the absolute time at which the timeout should occur
+		self.activity_timeout = time.time() + StateMachine.ACTIVITY_TIMEOUT
+
 		while True:
 			with self.interrupt:
-				timed_out = not self.interrupt.wait(StateMachine.ACTIVITY_TIMEOUT)
+				# Wait for a duration until the specified time arrives
+				timed_out = not self.interrupt.wait(self.activity_timeout - time.time())
 				event = self.interrupt.Read()
 
 				if timed_out:
@@ -73,36 +77,130 @@ class StateMachine(threading.Thread):
 					return self.StateFunction_ClosedAndRaised
 
 				elif event == Interrupt.EVENT_ACTIVITY:
+					# Has the effect of resetting the timeout
 					return self.StateFunction_OpenAndRaised
 
 				elif event == Interrupt.MANUAL_OVERRIDE:
 					return self.StateFunction_OverriddenAndRaised
 
 	def StateFunction_Closing(self):
-		return None
+		# Set outputs
+		fhgpio.Clear()
+		fhgpio.Set(fhgpio.PIN_MOTOR_DOWN, True)
+
+		while True:
+			with self.interrupt:
+				self.interrupt.wait()
+				event = self.interrupt.Read()
+
+				if event == Interrupt.EVENT_SASH_CLOSED:
+					return self.StateFunction_ClosedAndRaising
+
+				elif event == Interrupt.EVENT_MANUAL_OVERRIDE:
+					return self.StateFunction_OverriddenAndRaising
+
+				elif event == Interrupt.EVENT_OBSTRUCTION:
+					return self.StateFunction_OpenAndRaising
 
 	def StateFunction_ClosedAndRaising(self):
-		return None
+		# Set outputs
+		fhgpio.Clear()
+		fhgpio.Set(fhgpio.PIN_MOTOR_UP, True)
+		fhgpio.Set(fhgpio.PIN_LED_G, True)
+
+		while True:
+			with self.interrupt:
+				self.interrupt.wait()
+				event = self.interrupt.Read()
+
+				if event == Interrupt.EVENT_SASH_OPENED:
+					return self.StateFunction_OpenAndRaising
+
+				elif event == Interrupt.EVENT_PUSHER_REACHES_TOP:
+					return self.StateFunction_ClosedAndRaised
 
 	def StateFunction_ClosedAndRaised(self):
-		return None
+		# Set outputs
+		fhgpio.Clear()
+		fhgpio.Set(fhgpio.PIN_LED_G, True)
+
+		while True:
+			with self.interrupt:
+				self.interrupt.wait()
+				event = self.interrupt.Read()
+
+				if event == Interrupt.EVENT_SASH_OPENED:
+					return self.StateFunction_OpenAndRaised
 
 	def StateFunction_OpenAndRaising(self):
-		return None
+		# Set outputs
+		fhgpio.Clear()
+		fhgpio.Set(fhgpio.PIN_MOTOR_UP, True)
+
+		while True:
+			with self.interrupt:
+				self.interrupt.wait()
+				event = self.interrupt.Read()
+
+				if event == Interrupt.EVENT_PUSHER_REACHES_TOP:
+					return self.StateFunction_OpenAndRaised
+
+				elif event == Interrupt.MANUAL_CLOSE:
+					return self.StateFunction_Closing
 
 	def StateFunction_OverriddenAndRaising(self):
-		return None
+		# Set outputs
+		fhgpio.Clear()
+		fhgpio.Set(fhgpio.PIN_MOTOR_UP, True)
+		fhgpio.Set(fhgpio.PIN_LED_R, True)
+		fhgpio.Set(fhgpio.PIN_LED_G, True)
+
+		while True:
+			with self.interrupt:
+				self.interrupt.wait()
+				event = self.interrupt.Read()
+
+				if event == Interrupt.EVENT_PUSHER_REACHES_TOP:
+					return self.StateFunction_OverriddenAndRaised
+
+				elif event == Interrupt.EVENT_SASH_CLOSED:
+					return self.StateFunction_ClosedAndRaising
 
 	def StateFunction_OverriddenAndRaised(self):
-		return None
+		# Set outputs
+		fhgpio.Clear()
+		fhgpio.Set(fhgpio.PIN_LED_R, True)
+		fhgpio.Set(fhgpio.PIN_LED_G, True)
+
+		# This is the absolute time at which the timeout should occur
+		self.override_timeout = time.time() + StateMachine.OVERRIDE_TIMEOUT
+
+		while True:
+			with self.interrupt:
+				# Wait for a duration until the specified time arrives
+				timed_out = not self.interrupt.wait(self.override_timeout - time.time())
+				event = self.interrupt.Read()
+
+				if timed_out:
+					return self.StateFunction_OpenAndRaised
+
+				elif event == Interrupt.EVENT_MANUAL_CLOSE:
+					return self.StateFunction_Closing
+
+				elif event == Interrupt.EVENT_SASH_CLOSED:
+					return self.StateFunction_ClosedAndRaised
+
+				elif event == Interrupt.MANUAL_OVERRIDE:
+					# Has the effect of resetting the timeout
+					return self.StateFunction_OverriddenAndRaised
 
 if __name__ == '__main__':
-	#fhgpio.Init()
+	fhgpio.Init()
 
 	state_machine = StateMachine()
-	#state_machine.start()
+	state_machine.start()
 
-	#state_machine.interrupt.InitTriggers()
+	state_machine.interrupt.InitTriggers()
 
 	camera = Camera()
 	threading.Thread(target=camera.GetFrames).start()

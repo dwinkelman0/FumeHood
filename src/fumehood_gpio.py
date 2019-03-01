@@ -35,13 +35,16 @@ class FumeHoodGPIO:
 	@staticmethod
 	def Init():
 		# Set up GPIO configuration
-		gpio.setmode(gpio.BCM)
+		gpio.setmode(gpio.BOARD)
+
+		# Kill warnings
+		gpio.setwarnings(False)
 
 		# Set up GPIO pin inputs/outputs
-		gpio.setup(FumeHoodGPIO.PIN_LOWER_LIMIT, gpio.IN)
-		gpio.setup(FumeHoodGPIO.PIN_UPPER_LIMIT, gpio.IN)
-		gpio.setup(FumeHoodGPIO.PIN_MANUAL_LOWER, gpio.IN)
-		gpio.setup(FumeHoodGPIO.PIN_MANUAL_OVERRIDE, gpio.IN)
+		gpio.setup(FumeHoodGPIO.PIN_LOWER_LIMIT, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+		gpio.setup(FumeHoodGPIO.PIN_UPPER_LIMIT, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+		gpio.setup(FumeHoodGPIO.PIN_MANUAL_LOWER, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+		gpio.setup(FumeHoodGPIO.PIN_MANUAL_OVERRIDE, gpio.IN, pull_up_down=gpio.PUD_DOWN)
 		gpio.setup(FumeHoodGPIO.PIN_LED_R, gpio.OUT)
 		gpio.setup(FumeHoodGPIO.PIN_LED_G, gpio.OUT)
 		gpio.setup(FumeHoodGPIO.PIN_LED_B, gpio.OUT)

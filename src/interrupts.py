@@ -23,6 +23,7 @@ class Interrupt(threading.Condition):
 
 	def Send(self, code):
 		with self:
+			print("Interrupt {:}".format(code))
 			self.event = code
 			self.notify_all()
 
@@ -31,39 +32,37 @@ class Interrupt(threading.Condition):
 		self.event = Interrupt.EVENT_NONE
 		return output
 
-	def TriggeredSend(pin, event_rising, event_falling):
-		print(pin)
+	def TriggeredSend(self, pin, event_rising, event_falling):
 		"""Callback for edge detection"""
 		# Rising
-		if event_rising is not None and fhgpio.Read(pin):
+		if event_rising is not None and fhgpio.Get(pin):
 			self.Send(event_rising)
 			return
 
 		# Falling
-		if event_falling is not None and not fhgpio.Read(pin):
+		if event_falling is not None and not fhgpio.Get(pin):
 			self.Send(event_falling)
 			return
 
 	def InitTriggers(self):
 		"""Attach rising/falling edge triggers to GPIO inputs"""
 		gpio.add_event_detect(fhgpio.PIN_LOWER_LIMIT, gpio.BOTH,
-			lambda pin: self.TriggeredSend(
-				pin=pin,
-				event_rising=Interrupt.EVENT_SASH_CLOSED,
-				event_falling=Interrupt.EVENT_SASH_OPENED))
+			lambda _pin: self.TriggeredSend(
+				_pin,
+				Interrupt.EVENT_SASH_CLOSED,
+				Interrupt.EVENT_SASH_OPENED))
 		gpio.add_event_detect(fhgpio.PIN_UPPER_LIMIT, gpio.BOTH,
-			lambda pin: self.TriggeredSend(
-				pin=pin, 
-				event_rising=Interrupt.EVENT_PUSHER_REACHES_TOP,
-				event_falling=None))
+			lambda _pin: self.TriggeredSend(
+				_pin, 
+				Interrupt.EVENT_PUSHER_REACHES_TOP,
+				None))
 		gpio.add_event_detect(fhgpio.PIN_MANUAL_LOWER, gpio.BOTH,
-			lambda pin: self.TriggeredSend(
-				pin=pin,
-				event_rising=Interrupt.EVENT_MANUAL_LOWER,
-				event_falling=None))
+			lambda _pin: self.TriggeredSend(
+				_pin,
+				Interrupt.EVENT_MANUAL_CLOSE,
+				None))
 		gpio.add_event_detect(fhgpio.PIN_MANUAL_OVERRIDE, gpio.BOTH,
-			lambda pin: self.TriggeredSend(
-				pin=pin,
-				event_rising=Interrupt.EVENT_MANUAL_OVERRIDE,
-				event_falling=None))
-
+			lambda _pin: self.TriggeredSend(
+				_pin,
+				Interrupt.EVENT_MANUAL_OVERRIDE,
+				None))
