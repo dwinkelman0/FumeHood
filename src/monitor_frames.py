@@ -39,7 +39,6 @@ def MonitorFrames(camera, interrupt):
 		mask_weight = width * height * 3
 
 	while True:
-		print("MonitorFrames: waiting for frame...")
 		with camera.stream.cond_newframe:
 			# Wait for a new frame
 			camera.stream.cond_newframe.wait()
@@ -64,7 +63,6 @@ def MonitorFrames(camera, interrupt):
 			difference = np.square(current_frame - last_frame) # Non-linearity helps bring out meaningful changes
 			subtotal = np.sum(np.sum(difference)).astype("int64")
 			total = np.sum(subtotal) / mask_weight # Average change per pixel
-			print("Activity: %.3f" % total)
 			activity = total > 15 # Completely arbitrary
 			# 15 (with the sqrare function) seems to avoid noise like ambiance/shadows,
 			# but still plenty to detect even far-away motion

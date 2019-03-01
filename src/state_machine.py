@@ -4,6 +4,7 @@ from interrupts import Interrupt
 from monitor_frames import MonitorFrames
 import server
 
+import time
 import threading
 
 # State machine implementation
@@ -28,6 +29,7 @@ class StateMachine(threading.Thread):
 		# Infinite run cycle: run a state function, wait until it
 		# returns another state function, and run that
 		while True and state_function:
+			print("Transitioning to {:}".format(state_function.__name__))
 			state_function = state_function()
 
 	def GetStartupState(self):
@@ -80,7 +82,7 @@ class StateMachine(threading.Thread):
 					# Has the effect of resetting the timeout
 					return self.StateFunction_OpenAndRaised
 
-				elif event == Interrupt.MANUAL_OVERRIDE:
+				elif event == Interrupt.EVENT_MANUAL_OVERRIDE:
 					return self.StateFunction_OverriddenAndRaised
 
 	def StateFunction_Closing(self):
@@ -145,8 +147,11 @@ class StateMachine(threading.Thread):
 				if event == Interrupt.EVENT_PUSHER_REACHES_TOP:
 					return self.StateFunction_OpenAndRaised
 
-				elif event == Interrupt.MANUAL_CLOSE:
+				elif event == Interrupt.EVENT_MANUAL_CLOSE:
 					return self.StateFunction_Closing
+
+				elif event == Interrupt.EVENT_MANUAL_OVERRIDE:
+					return self.StateFunction_OverriddenAndRaising
 
 	def StateFunction_OverriddenAndRaising(self):
 		# Set outputs
@@ -190,7 +195,7 @@ class StateMachine(threading.Thread):
 				elif event == Interrupt.EVENT_SASH_CLOSED:
 					return self.StateFunction_ClosedAndRaised
 
-				elif event == Interrupt.MANUAL_OVERRIDE:
+				elif event == Interrupt.EVENT_MANUAL_OVERRIDE:
 					# Has the effect of resetting the timeout
 					return self.StateFunction_OverriddenAndRaised
 

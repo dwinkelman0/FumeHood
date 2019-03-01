@@ -17,13 +17,27 @@ class Interrupt(threading.Condition):
 	EVENT_SASH_CLOSED = 8
 	EVENT_PUSHER_REACHES_TOP = 9
 
+	# Table
+	EVENT_TABLE = {
+		0: "EVENT_NONE",
+		1: "EVENT_ACTIVITY",
+		2: "EVENT_OBSTRUCTION",
+		3: "EVENT_ACTIVITY_TIMEOUT",
+		4: "EVENT_MANUAL_OVERRIDE",
+		5: "EVENT_OVERRIDE_TIMEOUT",
+		6: "EVENT_MANUAL_CLOSE",
+		7: "EVENT_SASH_OPENED",
+		8: "EVENT_SASH_CLOSED",
+		9: "EVENT_PUSHER_REACHES_TOP"
+	}
+
 	def __init__(self):
 		super(Interrupt, self).__init__()
 		self.event = Interrupt.EVENT_NONE
 
 	def Send(self, code):
 		with self:
-			print("Interrupt {:}".format(code))
+			print("Interrupt {:}".format(self.EVENT_TABLE[code]))
 			self.event = code
 			self.notify_all()
 
