@@ -21,6 +21,9 @@ class StateMachine(threading.Thread):
 		# Initialize the condition variable used to signal events
 		self.interrupt = Interrupt()
 
+		# Initialize the red light blinking thread
+		self.red_light_thread = None
+
 	def Main(self):
 		# Choose a starting state based on the current states of
 		# LOWER_LIMIT and UPPER_LIMIT
@@ -59,6 +62,16 @@ class StateMachine(threading.Thread):
 	def StateFunction_OpenAndRaised(self):
 		# Set outputs
 		fhgpio.Clear()
+
+		# Blink red light to show activity
+		def BlinkRed():
+			fhgpio.Set(fhgpio.PIN_LED_R, True)
+			time.sleep(0.5)
+			fhgpio.Set(fhgpio.PIN_LED_R, False)
+
+		if self.red_light_thread == None or type(self.red_light_thread) is threading.Thread and not self.red_light_thread.isAlive():
+			self.red_light_thread = threading.Thread(target=BlinkRed)
+			self.red_light_thread.start()
 
 		# This is the absolute time at which the timeout should occur
 		self.activity_timeout = time.time() + StateMachine.ACTIVITY_TIMEOUT
