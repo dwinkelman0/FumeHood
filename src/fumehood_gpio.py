@@ -2,9 +2,11 @@ import RPi.GPIO as gpio
 
 class FumeHoodGPIO:
 
+	"""
+	# v0 (No PCB)
 	# Inputs
-	PIN_LOWER_LIMIT = 32
-	PIN_UPPER_LIMIT = 36
+	PIN_LOWER_LIMIT = 36
+	PIN_UPPER_LIMIT = 32
 	PIN_MANUAL_LOWER = 38
 	PIN_MANUAL_OVERRIDE = 40
 
@@ -14,6 +16,21 @@ class FumeHoodGPIO:
 	PIN_LED_B = 33
 	PIN_MOTOR_UP = 35
 	PIN_MOTOR_DOWN = 37
+	"""
+
+	# v4 (PCB v4.9)
+	# Inputs
+	PIN_LOWER_LIMIT = 24
+	PIN_UPPER_LIMIT = 26
+	PIN_MANUAL_LOWER = 38
+	PIN_MANUAL_OVERRIDE = 40
+
+	# Outputs
+	PIN_LED_R = 12
+	PIN_LED_G = 8
+	PIN_LED_B = 10
+	PIN_MOTOR_UP = 16
+	PIN_MOTOR_DOWN = 22
 
 	@staticmethod
 	def Get(pin):
