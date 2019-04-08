@@ -151,7 +151,7 @@ class StateMachine(threading.Thread):
 					return self.StateFunction_OpenAndRaised
 
 				elif event == Interrupt.EVENT_PUSHER_LEAVES_TOP:
-					return self.StateFunction_ClosedAndRaised
+					return self.StateFunction_ClosedAndRaising
 
 	def StateFunction_OpenAndRaising(self):
 		# Set outputs
