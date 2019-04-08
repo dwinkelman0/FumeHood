@@ -18,6 +18,7 @@ class FumeHoodGPIO:
 	PIN_MOTOR_DOWN = 37
 	"""
 
+	"""
 	# v4 (PCB v4.9)
 	# Inputs
 	PIN_LOWER_LIMIT = 24
@@ -30,6 +31,21 @@ class FumeHoodGPIO:
 	PIN_LED_G = 8
 	PIN_LED_B = 10
 	PIN_MOTOR_UP = 16
+	PIN_MOTOR_DOWN = 22
+	"""
+
+	# v4.10 (PCB v4.10)
+	# Inputs
+	PIN_LOWER_LIMIT = 32
+	PIN_UPPER_LIMIT = 36
+	PIN_MANUAL_LOWER = 38
+	PIN_MANUAL_OVERRIDE = 40
+
+	# Outputs
+	PIN_LED_R = 8
+	PIN_LED_G = 10
+	PIN_LED_B = 12
+	PIN_MOTOR_UP = 18
 	PIN_MOTOR_DOWN = 22
 
 	@staticmethod
