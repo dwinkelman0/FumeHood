@@ -16,6 +16,7 @@ class Interrupt(threading.Condition):
 	EVENT_SASH_OPENED = 7
 	EVENT_SASH_CLOSED = 8
 	EVENT_PUSHER_REACHES_TOP = 9
+	EVENT_PUSHER_LEAVES_TOP = 10
 
 	# Table
 	EVENT_TABLE = {
@@ -29,6 +30,7 @@ class Interrupt(threading.Condition):
 		7: "EVENT_SASH_OPENED",
 		8: "EVENT_SASH_CLOSED",
 		9: "EVENT_PUSHER_REACHES_TOP"
+		10: "EVENT_PUSHER_LEAVES_TOP"
 	}
 
 	def __init__(self):
@@ -69,7 +71,7 @@ class Interrupt(threading.Condition):
 			lambda _pin: self.TriggeredSend(
 				_pin, 
 				Interrupt.EVENT_PUSHER_REACHES_TOP,
-				None))
+				Interrupt.EVENT_PUSHER_LEAVES_TOP))
 		gpio.add_event_detect(fhgpio.PIN_MANUAL_LOWER, gpio.BOTH,
 			lambda _pin: self.TriggeredSend(
 				_pin,

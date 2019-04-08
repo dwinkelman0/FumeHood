@@ -98,6 +98,9 @@ class StateMachine(threading.Thread):
 				elif event == Interrupt.EVENT_MANUAL_OVERRIDE:
 					return self.StateFunction_OverriddenAndRaised
 
+				elif event == Interrupt.EVENT_PUSHER_LEAVES_TOP:
+					return self.StateFunction_OpenAndRaising
+
 	def StateFunction_Closing(self):
 		# Set outputs
 		fhgpio.Clear()
@@ -147,6 +150,9 @@ class StateMachine(threading.Thread):
 				if event == Interrupt.EVENT_SASH_OPENED:
 					return self.StateFunction_OpenAndRaised
 
+				elif event == Interrupt.EVENT_PUSHER_LEAVES_TOP:
+					return self.StateFunction_ClosedAndRaised
+
 	def StateFunction_OpenAndRaising(self):
 		# Set outputs
 		fhgpio.Clear()
@@ -166,6 +172,9 @@ class StateMachine(threading.Thread):
 				elif event == Interrupt.EVENT_MANUAL_OVERRIDE:
 					return self.StateFunction_OverriddenAndRaising
 
+				elif event == Interrupt.EVENT_SASH_CLOSED:
+					return self.StateFunction_ClosedAndRaising
+
 	def StateFunction_OverriddenAndRaising(self):
 		# Set outputs
 		fhgpio.Clear()
@@ -183,6 +192,9 @@ class StateMachine(threading.Thread):
 
 				elif event == Interrupt.EVENT_SASH_CLOSED:
 					return self.StateFunction_ClosedAndRaising
+
+				elif event == Interrupt.EVENT_MANUAL_CLOSE:
+					return self.StateFunction_Closing
 
 	def StateFunction_OverriddenAndRaised(self):
 		# Set outputs
@@ -211,6 +223,9 @@ class StateMachine(threading.Thread):
 				elif event == Interrupt.EVENT_MANUAL_OVERRIDE:
 					# Has the effect of resetting the timeout
 					return self.StateFunction_OverriddenAndRaised
+
+				elif event == Interrupt.EVENT_PUSHER_LEAVES_TOP:
+					return self.StateFunction_OverriddenAndRaising
 
 if __name__ == '__main__':
 	fhgpio.Init()
